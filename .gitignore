@@ -1,3 +1,8 @@
+# safety
+index.js
+package-lock.json
+
+
 # Logs
 logs
 *.log
