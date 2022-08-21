@@ -5,14 +5,11 @@ const account = 0
 
 const bot = createClient(account)
 
-bot
-.on("system.login.qrcode", function (e) {
-	this.logger.mark("扫码后按Enter完成登录")
-	process.stdin.once("data", () => {
-		this.login()
-	})
-})
-.login()
+let client = bot;
+client.on("system.login.slider", function (e) {
+	console.log("输入ticket：")
+	process.stdin.once("data", ticket => this.submitSlider(String(ticket).trim()))
+  }).login("password")
 
 exports.bot = bot
 

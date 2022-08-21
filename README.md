@@ -2,18 +2,23 @@
 
 基于[oicq](https://github.com/takayama-lily/oicq)和[oicq-template](https://github.com/takayama-lily/oicq-template)的QQ机器人,用来提醒你和群友执行跑步计划.
 
-
-![example.jpg](./example.jpg)
-
+<img src="./example.jpg" alt="example.jpg" style="zoom:50%;" />
 
 
 
 ## Install
 
-1. 安装 [Node.js](https://nodejs.org/) 14以上版本  
-2. clone到本地并执行 `npm i` 安装依赖
-3. 将 index.js 第二行 `const account = 0` 中的0改为你自己的账号
-4. 执行 `npm run dev` 启动程序
+1. 如果你想部署到服务器,则需要用`index_remote.js`替换`index.js`,并在最后一步根据[oicq文档](https://github.com/takayama-lily/oicq/wiki/01.%E4%BD%BF%E7%94%A8%E5%AF%86%E7%A0%81%E7%99%BB%E5%BD%95-(%E6%BB%91%E5%8A%A8%E9%AA%8C%E8%AF%81%E7%A0%81%E6%95%99%E7%A8%8B))的指引进行操作
+
+2. 安装 [Node.js](https://nodejs.org/) 14以上版本  
+
+3. clone到本地并执行 `npm i` 安装依赖
+
+4. 将 index.js 第二行 `const account = 0` 中的0改为你自己的账号
+
+5. 执行 `npm run dev` 启动程序
+
+or
 
 如果你已经有了一个机器人,也可以直接在代码中导入`plugin-run.js`.
 
@@ -37,7 +42,7 @@
 
 凡是带有参数的命令,省略参数部分即可恢复为默认值.
 
-通过#save命令手动备份的数据在`run_bot.dat.bak`中.
+通过`#save`命令手动备份的数据在`run_bot.dat.bak`中.
 
 bot运行时的数据会被自动备份到`run_bot.dat` 中.
 
