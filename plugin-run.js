@@ -2,7 +2,8 @@
 const { segment } = require("oicq");
 const { join } = require("path");
 const { send } = require("process");
-const { bot } = require("./index")
+const { bot } = require("./index");
+// const { fs } = require("fs");
 
 /**
  * {
@@ -10,16 +11,21 @@ const { bot } = require("./index")
  *   nickname: 谢尔顿,
  *   last_run: Date,
  *   run_count: 2,
- *   reminder: null
- *   ...break... 
+ *   reminder: null,
+ *   break: 0,
+ *   gap: 1,
+ *   cur_gap: 0
  * }
  */
 
 let joined_users = [];
 let group_id = null;
 
-
+// 启动定时提醒
 bot.on("system.online", timing_reminder);
+
+// 每当接收到新消息时,保存数据
+bot.on("message.group", save);
 
 // #加入
 // 顺便获取一下群号
@@ -36,9 +42,14 @@ bot.on("message.group", function (msg) {
 });
 
 // #查询
-// TODO: sort by last time
 bot.on("message.group", function (msg) {
     if (msg.raw_message !== "#查询") return;
+
+    joined_users.sort(function (a, b) {
+        let ret = a.last_run - b.last_run;
+        if (Math.abs(ret) <= 60 * 1000) ret = b.run_count - a.run_count;
+        return ret;
+    });
 
     let rep = "排行榜\n";
     rep += "\t名称\t\t距上次\t总次数\n"
@@ -47,7 +58,8 @@ bot.on("message.group", function (msg) {
         rank++;
         let cur_date = new Date();
         let ms = cur_date - i.last_run;
-        let interval = String(Math.floor(ms / 86400000)) + "天" + String(Math.floor((ms % 86400000) / 3600000)) + "小时";
+        let interval = String(Math.floor(ms / 86400000)) + "天" + String(Math.floor((ms % 86400000) / 3600000)) + "时";
+        if (i.break !== 0) interval = `开摆中(剩余${i.break}次)`;
         rep += rank + ". " + i.nickname + " " + interval + " " + i.run_count + "\n";
     }
     msg.reply(rep, false);
@@ -56,6 +68,10 @@ bot.on("message.group", function (msg) {
 // #跑完了
 bot.on("message.group", function (msg) {
     if (msg.raw_message !== "#跑完了") return;
+    if (!is_joined(msg)) {
+        msg.reply("需要先\"#加入\"才能使用此功能.", true);
+        return;
+    }
 
     let user = joined_users.find(item => item.user_id === msg.sender.user_id);
     user.last_run = new Date();
@@ -81,7 +97,7 @@ bot.on("message.group", function (msg) {
 
     let user = joined_users.find(item => item.user_id === msg.sender.user_id);
     // 未给出或给出了错误的时间格式,取消定时
-    if (ind1 === -1 || ind2 === -1) {
+    if (isNaN(hour) || isNaN(min)) {
         user.reminder = null;
         msg.reply("已取消定时提醒.", true);
     } else {
@@ -90,20 +106,60 @@ bot.on("message.group", function (msg) {
     }
 });
 
+// #间隔 x
+bot.on("message.group", function (msg) {
+    if (msg.raw_message.indexOf("#间隔") === -1) return;
+    if (!is_joined(msg)) {
+        msg.reply("需要先\"#加入\"才能使用此功能.", true);
+        return;
+    }
+
+    let user = joined_users.find(item => item.user_id === msg.sender.user_id);
+    let ind = msg.raw_message.indexOf(" ");
+    let x = +msg.raw_message.slice(ind + 1);
+    // 停止开摆
+    if (isNaN(x) || x === 0) {
+        user.gap = 1;
+        msg.reply("已设置为每1天提醒你跑步一次.", true);
+    } else {
+        user.gap = x;
+        msg.reply(`已设置为每${x}天提醒你跑步一次.`, true);
+    }
+});
+
+// #开摆 x
+bot.on("message.group", function (msg) {
+    if (msg.raw_message.indexOf("#开摆") === -1) return;
+    if (!is_joined(msg)) {
+        msg.reply("需要先\"#加入\"才能使用此功能.", true);
+        return;
+    }
+
+    let user = joined_users.find(item => item.user_id === msg.sender.user_id);
+    let ind = msg.raw_message.indexOf(" ");
+    let x = +msg.raw_message.slice(ind + 1);
+    // 停止开摆
+    if (isNaN(x) || x === 0) {
+        user.break = 0;
+        msg.reply("你已停止开摆.", true);
+    } else {
+        user.break = x;
+        msg.reply(`接下来的${x}天你可以开摆.`, true);
+    }
+});
+
 // #帮助
+// TODO: (link)
 bot.on("message.group", function (msg) {
     if (msg.raw_message !== "#帮助") return;
 
-    msg.reply("跑步bot使用指南:",
-        "..."
-    );
-
+    msg.reply("跑步bot使用指南:" + "查看(link)获取帮助.");
 });
 
 function is_joined(msg) {
     let sender = msg.sender;
     for (let i of joined_users)
-        if (i.nickname === sender.nickname)
+        if (i.user_id === sender.user_id)
             return true;
     return false;
 }
@@ -116,12 +172,12 @@ function user_join(msg) {
 
     let sender = msg.sender;
     let date = new Date();
-    // TODO: debug last_run
-    date.setHours(date.getHours() - 23);
-    // **********
     sender.last_run = date;
     sender.run_count = 0;
+    sender.break = 0;
     sender.reminder = null;
+    sender.gap = 1;
+    sender.cur_gap = 0;
     joined_users.push(sender);
 
     msg.reply(sender.nickname + " 加入了跑步计划.", true);
@@ -133,21 +189,25 @@ function timing_reminder() {
     let tar = new Date();
 
     for (let i of joined_users) {
-        if (i.reminder === null) continue;
+        if (i.reminder === null) continue; // 未设置提醒
         tar.setHours(i.reminder[0]);
         tar.setMinutes(i.reminder[1]);
         if (tar - cur < 0) tar.setDate(tar.getDate() + 1);
+        if (tar - cur !== 0) continue;
 
-        console.log(tar - cur);
-        if (tar - cur === 0) {
-            let user = i.user_id;
-            let group = bot.pickGroup(group_id);
-            const message = [
-                segment.at(user),
-                " 该去跑跑了!",
-            ]
-            group.sendMsg(message);
+        let group = bot.pickGroup(group_id);
+        if (i.break !== 0) {  // 开摆一次
+            i.break--;
+            i.cur_gap = 0;
+            continue;
         }
+        if (++i.cur_gap !== i.gap) continue;   // 处于间隔
+        i.cur_gap = 0;
+        const message = [
+            segment.at(i.user_id),
+            " 该去跑跑了!",
+        ]
+        group.sendMsg(message);
     }
 
     // 每分钟调用一次
@@ -155,5 +215,15 @@ function timing_reminder() {
 }
 
 // 读写存储数据,持久化...
+function save() {
+    var fs = require("fs");
 
-
+    console.log("准备保存数据");
+    let data = JSON.stringify(joined_users);
+    fs.writeFile('run_bot.dat',data , function (err) {
+        if (err) {
+            return console.error(err);
+        }
+        console.log("数据保存成功");
+    });
+}
