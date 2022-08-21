@@ -5,11 +5,11 @@ const { send } = require("process");
 const { bot } = require("./index");
 let fs = require("fs");
 
-/**
+/** joined_users elements:
  * {
  *   user_id: 123456789,
  *   nickname: 谢尔顿,
- *   last_run: Date,
+ *   last_run: 2022-08-21T06:59:28.179Z,
  *   run_count: 2,
  *   reminder: null,
  *   break: 0,
@@ -189,11 +189,10 @@ bot.on("message.group", function (msg) {
 });
 
 // #帮助
-// TODO: (link)
 bot.on("message.group", function (msg) {
     if (msg.raw_message !== "#帮助") return;
 
-    msg.reply("跑步bot使用指南:\n" + "(link).");
+    msg.reply("跑步bot使用指南:\n" + "https://github.com/goverclock/run-bot/blob/main/README.md");
 });
 
 function is_joined(msg) {
@@ -224,7 +223,7 @@ function user_join(msg) {
 };
 
 function timing_reminder() {
-    // console.log("timing_reminder(): called");
+    console.log("timing_reminder(): called");
     let cur = new Date();
     let tar = new Date();
 
@@ -255,7 +254,7 @@ function timing_reminder() {
     }
 
     // 每分钟调用一次
-    setTimeout(timing_reminder, 60 * 1000);
+    setTimeout(timing_reminder, 59 * 1000);
 }
 
 // 读写存储数据

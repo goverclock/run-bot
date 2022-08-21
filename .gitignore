@@ -1,9 +1,3 @@
-# safety
-index.js
-README.md
-package-lock.json
-
-
 # Logs
 logs
 *.log
@@ -110,3 +104,4 @@ dist
 .tern-port
 
 data
+package-lock.json
