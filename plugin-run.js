@@ -223,7 +223,7 @@ function user_join(msg) {
 };
 
 function timing_reminder() {
-    console.log("timing_reminder(): called");
+    // console.log("timing_reminder(): called");
     let cur = new Date();
     let tar = new Date();
 
